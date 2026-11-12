@@ -3,24 +3,27 @@ library(jsonlite)
 library(plotly)
 library(htmlwidgets)
 
-# 1. Configuration
-scholar_id <- "nFbaL2gAAAAJ" # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
-api_key <- Sys.getenv("SERPAPI_KEY")
+# 1. Configuration (trimws removes accidental spaces or newlines)
+scholar_id <- trimws("nFbaL2gAAAAJ&hl=en") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
+api_key <- trimws(Sys.getenv("SERPAPI_KEY"))
 
 if (api_key == "") {
   stop("SERPAPI_KEY environment variable is missing.")
 }
 
-# 2. Fetch Google Scholar Author JSON directly from SerpApi
-api_url <- paste0(
-  "https://serpapi.com",
-  "&author_id=", scholar_id,
-  "&api_key=", api_key
+# 2. Fetch Google Scholar Author JSON safely using query parameters
+response <- GET(
+  url = "https://serpapi.com",
+  query = list(
+    engine = "google_scholar_author",
+    author_id = scholar_id,
+    api_key = api_key
+  ),
+  timeout(60)
 )
 
-response <- GET(api_url, timeout(60))
-
 if (status_code(response) != 200) {
+  message("API Error Details: ", content(response, as = "text", encoding = "UTF-8"))
   stop(paste("SerpApi request failed. Status code:", status_code(response)))
 }
 
@@ -42,6 +45,4 @@ fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
 
 # 5. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE)
-message("Successfully generated index.html!")
-
-
+message("Successfully generated index.html!")  
