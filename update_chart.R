@@ -4,66 +4,59 @@ library(plotly)
 library(htmlwidgets)
 
 # 1. Configuration
-scholar_id <- "nFbaL2gAAAAJ&hl=en" # Replace with your Google Scholar ID
+scholar_id <- "nFbaL2gAAAAJ" # Make sure this is YOUR Scholar ID!
 api_key <- Sys.getenv("SCRAPER_API_KEY")
 
 if (api_key == "") {
   stop("SCRAPER_API_KEY environment variable is missing.")
 }
 
-# 2. Fetch Google Scholar profile with render=true so JS builds the chart
+# 2. Fetch Google Scholar profile using a US IP and JS rendering
 scholar_url <- paste0("https://google.com", scholar_id, "&hl=en")
 proxy_url <- paste0(
   "http://scraperapi.com?api_key=", api_key,
-  "&render=true&url=", URLencode(scholar_url, reserved = TRUE)
+  "&country_code=us&render=true&url=", URLencode(scholar_url, reserved = TRUE)
 )
 
 response <- GET(proxy_url, timeout(90))
+html_text_raw <- content(response, as = "text", encoding = "UTF-8")
 
 if (status_code(response) != 200) {
+  message("Response body: ", substr(html_text_raw, 1, 500))
   stop(paste("Failed to fetch Google Scholar page. Status code:", status_code(response)))
 }
 
-# 3. Parse the HTML
-html_text_raw <- content(response, as = "text", encoding = "UTF-8")
+# 3. Parse the HTML and inspect what we got
 page <- read_html(html_text_raw)
-
-# Print page title in logs to verify we actually landed on the Scholar profile
 page_title <- page %>% html_node("title") %>% html_text()
-message("Fetched page title: ", page_title)
+message("=== FETCHED PAGE TITLE: ", page_title, " ===")
 
-# Extract years
-years <- page %>%
-  html_nodes(".gsc_g_t") %>%
-  html_text() %>%
-  as.numeric()
+# Extract years and citation counts
+years <- page %>% html_nodes(".gsc_g_t") %>% html_text() %>% as.numeric()
+cites_raw <- page %>% html_nodes(".gsc_g_al") %>% html_text() %>% as.numeric()
 
-# Extract bars safely (handles years with 0 citations)
-bars <- page %>% html_nodes(".gsc_g_a")
-if (length(bars) > 0) {
-  # Map each bar to its column position using the 'style' z-index/right offset or order
-  cites_raw <- page %>% html_nodes(".gsc_g_al") %>% html_text() %>% as.numeric()
-  
-  # If counts match years directly, use them; otherwise pad leading zeros
+message("Years found: ", paste(years, collapse = ", "))
+message("Citations found: ", paste(cites_raw, collapse = ", "))
+
+# Align years and citations if leading years had 0 citations
+if (length(years) > 0 && length(cites_raw) > 0) {
   if (length(cites_raw) == length(years)) {
     cites <- cites_raw
+  } else if (length(years) > length(cites_raw)) {
+    cites <- c(rep(0, length(years) - length(cites_raw)), cites_raw)
   } else {
-    # Extract index from onclick/href or align right-to-left
-    diff_len <- length(years) - length(cites_raw)
-    if (diff_len > 0) {
-      cites <- c(rep(0, diff_len), cites_raw)
-    } else {
-      cites <- cites_raw
-    }
+    cites <- numeric(0)
   }
 } else {
   cites <- numeric(0)
 }
 
-# Safety check
-if (length(years) == 0 || length(cites) == 0 || length(years) != length(cites)) {
-  message("HTML snippet preview: ", substr(html_text_raw, 1, 500))
-  stop("Could not parse citation bars. Stopping so existing chart is not overwritten.")
+# Safety check with detailed diagnostic output
+if (length(years) == 0 || length(cites) == 0) {
+  message("=== HTML BODY TEXT PREVIEW ===")
+  body_text <- page %>% html_node("body") %>% html_text()
+  message(substr(gsub("\\s+", " ", body_text), 1, 600))
+  stop("Could not parse citation bars. Check the FETCHED PAGE TITLE and HTML BODY TEXT PREVIEW above.")
 }
 
 ct <- data.frame(year = years, cites = cites)
@@ -79,4 +72,5 @@ fig <- plot_ly(ct, x = ~year, y = ~cites, type = 'bar',
 # 5. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE)
 message("Successfully generated index.html!")
+
 
