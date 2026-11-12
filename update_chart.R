@@ -7,35 +7,25 @@ library(htmlwidgets)
 scholar_id <- trimws("nFbaL2gAAAAJ&hl=en") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
 api_key <- trimws(Sys.getenv("SERPAPI_KEY"))
 
-if (api_key == "") {
-  stop("SERPAPI_KEY environment variable is missing.")
+message("Loaded SERPAPI_KEY length: ", nchar(api_key))
+if (nchar(api_key) < 30) {
+  stop("SERPAPI_KEY is missing or too short! Check GitHub Repository Secrets.")
 }
 
 # 2. Fetch Google Scholar Author JSON from SerpApi
-response <- GET(
-  url = "https://serpapi.com",
-  query = list(
-    engine = "google_scholar_author",
-    author_id = scholar_id,
-    api_key = api_key,
-    output = "json"
-  ),
-  add_headers("Accept" = "application/json"),
-  timeout(60)
+api_url <- paste0(
+  "https://serpapi.com",
+  "&author_id=", scholar_id,
+  "&api_key=", api_key
 )
 
+response <- GET(api_url, timeout(60))
 raw_body <- content(response, as = "text", encoding = "UTF-8")
 
-if (status_code(response) != 200) {
-  message("API Error Details: ", substr(raw_body, 1, 500))
-  stop(paste("SerpApi request failed. Status code:", status_code(response)))
-}
-
-# Check if HTML was returned instead of JSON
-if (grepl("^\\s*<", raw_body)) {
+if (status_code(response) != 200 || grepl("^\\s*<", raw_body)) {
   message("Final URL hit: ", response$url)
-  message("HTML Preview: ", substr(raw_body, 1, 400))
-  stop("Received HTML instead of JSON. Check the Final URL and HTML Preview above.")
+  message("Response Preview: ", substr(raw_body, 1, 300))
+  stop("SerpApi did not return JSON. Verify your SERPAPI_KEY value in GitHub Secrets.")
 }
 
 # 3. Parse the year-wise citation graph directly from JSON
