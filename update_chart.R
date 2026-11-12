@@ -4,7 +4,7 @@ library(plotly)
 library(htmlwidgets)
 
 # 1. Configuration
-scholar_id <- trimws("nFbaL2gAAAAJ&hl=en") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
+scholar_id <- trimws("nFbaL2gAAAAJ") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
 api_key <- trimws(Sys.getenv("SERPAPI_KEY"))
 
 message("Loaded SERPAPI_KEY length: ", nchar(api_key))
