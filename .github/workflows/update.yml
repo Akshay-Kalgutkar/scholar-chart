@@ -26,11 +26,11 @@ jobs:
 
       - name: Install R packages
         run: |
-          Rscript -e 'install.packages(c("httr", "rvest", "plotly", "htmlwidgets"))'
+          Rscript -e 'install.packages(c("httr", "jsonlite", "plotly", "htmlwidgets"))'
 
       - name: Run R script
         env:
-          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: |
           Rscript update_chart.R
 
