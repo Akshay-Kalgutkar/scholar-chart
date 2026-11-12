@@ -21,6 +21,9 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
       - name: Install R packages
         run: |
           Rscript -e 'install.packages(c("scholar", "plotly", "htmlwidgets"))'
