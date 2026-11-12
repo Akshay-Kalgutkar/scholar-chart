@@ -6,9 +6,6 @@ library(htmlwidgets)
 scholar_id <- "nFbaL2gAAAAJ&hl=en"
 ct <- get_citation_history(scholar_id)
 
-if (nrow(ct) == 0) {
-  stop("No citation data returned. Stopping so existing chart is not overwritten.")
-}
 
 # Create a clean interactive bar chart
 fig <- plot_ly(ct, x = ~year, y = ~cites, type = 'bar',
