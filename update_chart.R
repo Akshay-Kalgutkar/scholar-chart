@@ -3,29 +3,32 @@ library(jsonlite)
 library(plotly)
 library(htmlwidgets)
 
-# 1. Configuration
-scholar_id <- trimws("nFbaL2gAAAAJ") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
-api_key <- trimws(Sys.getenv("SERPAPI_KEY"))
+# 1. Configuration (remove all spaces, tabs, or line breaks)
+scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
+api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
-message("Loaded SERPAPI_KEY length: ", nchar(api_key))
+message("Cleaned SERPAPI_KEY length: ", nchar(api_key))
 if (nchar(api_key) < 30) {
   stop("SERPAPI_KEY is missing or too short! Check GitHub Repository Secrets.")
 }
 
-# 2. Fetch Google Scholar Author JSON from SerpApi
-api_url <- paste0(
-  "https://serpapi.com",
-  "&author_id=", scholar_id,
-  "&api_key=", api_key
+# 2. Fetch Google Scholar Author JSON using httr's safe query builder
+response <- GET(
+  url = "https://serpapi.com",
+  query = list(
+    engine = "google_scholar_author",
+    author_id = scholar_id,
+    api_key = api_key
+  ),
+  timeout(60)
 )
 
-response <- GET(api_url, timeout(60))
 raw_body <- content(response, as = "text", encoding = "UTF-8")
 
 if (status_code(response) != 200 || grepl("^\\s*<", raw_body)) {
-  message("Final URL hit: ", response$url)
+  message("Status code: ", status_code(response))
   message("Response Preview: ", substr(raw_body, 1, 300))
-  stop("SerpApi did not return JSON. Verify your SERPAPI_KEY value in GitHub Secrets.")
+  stop("SerpApi did not return valid JSON. Check the Response Preview above.")
 }
 
 # 3. Parse the year-wise citation graph directly from JSON
