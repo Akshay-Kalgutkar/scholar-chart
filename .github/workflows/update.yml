@@ -30,7 +30,7 @@ jobs:
 
       - name: Run R script
         run: |
-          Rscript update_chart.R
+          Rscript citations.R
 
       - name: Commit and push updated HTML
         run: |
