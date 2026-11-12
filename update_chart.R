@@ -3,32 +3,35 @@ library(jsonlite)
 library(plotly)
 library(htmlwidgets)
 
-# 1. Configuration (remove all spaces, tabs, or line breaks)
+# 1. Configuration
 scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
 api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
-message("Cleaned SERPAPI_KEY length: ", nchar(api_key))
 if (nchar(api_key) < 30) {
-  stop("SERPAPI_KEY is missing or too short! Check GitHub Repository Secrets.")
+  stop("SERPAPI_KEY is missing or too short. Check GitHub Repository Secrets.")
 }
 
-# 2. Fetch Google Scholar Author JSON using httr's safe query builder
+# 2. Fetch Google Scholar Author JSON using a standard curl User-Agent
 response <- GET(
-  url = "https://serpapi.com",
+  url = "https://serpapi.com/search.json",
   query = list(
     engine = "google_scholar_author",
     author_id = scholar_id,
     api_key = api_key
   ),
+  user_agent("curl/8.5.0"),
+  add_headers("Accept" = "application/json"),
   timeout(60)
 )
 
 raw_body <- content(response, as = "text", encoding = "UTF-8")
 
+# Verify we received JSON rather than an HTML redirect
 if (status_code(response) != 200 || grepl("^\\s*<", raw_body)) {
   message("Status code: ", status_code(response))
+  message("Content-Type: ", headers(response)[["content-type"]])
   message("Response Preview: ", substr(raw_body, 1, 300))
-  stop("SerpApi did not return valid JSON. Check the Response Preview above.")
+  stop("SerpApi still returned non-JSON output. Check the Content-Type and Preview above.")
 }
 
 # 3. Parse the year-wise citation graph directly from JSON
