@@ -4,7 +4,7 @@ library(plotly)
 library(htmlwidgets)
 
 # 1. Configuration (strip whitespace and '&hl=en' to keep only the 12-character ID)
-scholar_id <- gsub("\\s+|&.*", "", "nFbaL2gAAAAJ&hl=en")
+scholar_id <- gsub("\\s+|&.*", "", "nFbaL2gAAAAJ")
 api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
 if (nchar(api_key) < 30) {
