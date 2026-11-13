@@ -3,21 +3,22 @@ library(jsonlite)
 library(plotly)
 library(htmlwidgets)
 
-# 1. Configuration (keep only the 12-character Scholar ID without '&hl=en')
-scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ&hl=en")
+# 1. Configuration (strip whitespace and '&hl=en' to keep only the 12-character ID)
+scholar_id <- gsub("\\s+|&.*", "", "nFbaL2gAAAAJ&hl=en")
 api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
 if (nchar(api_key) < 30) {
   stop("SERPAPI_KEY is missing or too short. Check GitHub Repository Secrets.")
 }
 
-# 2. Fetch Google Scholar Author JSON using a standard curl User-Agent
+# 2. Fetch Google Scholar Author JSON (num = 100 fetches up to 100 articles for accurate pub counts)
 response <- GET(
-  url = "https://serpapi.com/search.json",
+  url = "https://serpapi.com",
   query = list(
     engine = "google_scholar_author",
     author_id = scholar_id,
-    api_key = api_key
+    api_key = api_key,
+    num = 100
   ),
   user_agent("curl/8.5.0"),
   add_headers("Accept" = "application/json"),
@@ -33,7 +34,7 @@ if (status_code(response) != 200 || grepl("^\\s*<", raw_body)) {
   stop("SerpApi did not return valid JSON. Check the Content-Type and Preview above.")
 }
 
-# 3. Parse year-wise citations and summary metrics from JSON
+# 3. Parse year-wise citations, publications, and summary metrics from JSON
 data <- fromJSON(raw_body)
 
 if (!is.null(data$error)) {
@@ -44,6 +45,29 @@ ct <- data$cited_by$graph
 if (is.null(ct) || nrow(ct) == 0) {
   stop("No citation graph data found. Verify your scholar_id is correct.")
 }
+
+# Count publications per year from data$articles
+articles <- data$articles
+if (!is.null(articles) && "year" %in% names(articles)) {
+  pub_years <- as.numeric(articles$year)
+  pub_years <- pub_years[!is.na(pub_years)]
+  
+  if (length(pub_years) > 0) {
+    pub_df <- as.data.frame(table(year = pub_years), stringsAsFactors = FALSE)
+    pub_df$year <- as.numeric(pub_df$year)
+    names(pub_df) <- "publications"
+  } else {
+    pub_df <- data.frame(year = numeric(0), publications = numeric(0))
+  }
+} else {
+  pub_df <- data.frame(year = numeric(0), publications = numeric(0))
+}
+
+# Merge citation years and publication years into one complete timeline
+merged_df <- merge(ct, pub_df, by = "year", all = TRUE)
+merged_df$citations[is.na(merged_df$citations)] <- 0
+merged_df$publications[is.na(merged_df$publications)] <- 0
+merged_df <- merged_df[order(merged_df$year), ]
 
 # Extract Total Citations, h-index, and i10-index from data$cited_by$table
 tbl <- data$cited_by$table
@@ -58,21 +82,63 @@ summary_text <- paste0(
   "   |   <b>i10-index:</b> ", i10_index
 )
 
-# 4. Generate the interactive bar chart with summary metrics banner
-fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
-               width = 750, height = 250,
-               marker = list(color = '#4285F4'),
-               text = ~citations, textposition = 'outside') %>%
+# 4. Generate dual-axis line chart: Citations (Line 1) + Publications (Line 2)
+fig <- plot_ly(merged_df, x = ~year, width = 750, height = 450) %>%
+  # Citations per year as a solid blue line (Left Y-axis)
+  add_trace(
+    y = ~citations,
+    name = "Citations",
+    type = "scatter",
+    mode = "lines+markers+text",
+    line = list(color = "#4285F4", width = 3),
+    marker = list(color = "#4285F4", size = 8),
+    text = ~citations,
+    textposition = "top center",
+    textfont = list(color = "#1a73e8", size = 11),
+    hovertemplate = "Citations: %{y}<extra></extra>"
+  ) %>%
+  # Publications per year as a dashed green line (Right Y-axis)
+  add_trace(
+    y = ~publications,
+    name = "Publications",
+    yaxis = "y2",
+    type = "scatter",
+    mode = "lines+markers",
+    line = list(color = "#0F9D58", width = 2.5, dash = "dash"),
+    marker = list(color = "#0F9D58", size = 7, symbol = "diamond"),
+    hovertemplate = "Publications: %{y}<extra></extra>"
+  ) %>%
   layout(
     title = list(
-      text = paste0("Google Scholar Citations per Year<br><span style='font-size:14px; color:#555555;'>", summary_text, "</span>"),
+      text = paste0(
+        "Google Scholar Citations & Publications per Year<br>",
+        "<span style='font-size:14px; color:#555555;'>", summary_text, "</span>"
+      ),
       y = 0.95
     ),
-    margin = list(t = 85),
-    xaxis = list(title = "Year", dtick = 1),
-    yaxis = list(title = "Citations")
+    margin = list(t = 90, r = 60, b = 60, l = 60),
+    xaxis = list(title = "Year", dtick = 1, showgrid = FALSE),
+    yaxis = list(
+      title = "Citations",
+      titlefont = list(color = "#4285F4"),
+      tickfont = list(color = "#4285F4"),
+      rangemode = "tozero"
+    ),
+    yaxis2 = list(
+      title = "Publications",
+      overlaying = "y",
+      side = "right",
+      titlefont = list(color = "#0F9D58"),
+      tickfont = list(color = "#0F9D58"),
+      dtick = 1,
+      rangemode = "tozero",
+      showgrid = FALSE
+    ),
+    legend = list(orientation = "h", x = 0.35, y = -0.18),
+    hovermode = "x unified"
   )
 
 # 5. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE)
-message("Successfully generated index.html with summary metrics!")
+message("Successfully generated index.html with dual line chart!")
+
