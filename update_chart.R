@@ -42,12 +42,14 @@ if (!is.null(data$error)) {
 }
 
 ct <- data$cited_by$graph
+
 if (is.null(ct) || nrow(ct) == 0) {
   stop("No citation graph data found. Verify your scholar_id is correct.")
 }
 
-# Extract Total Citations, h-index, and i10-index from data$cited_by$table
+# Extract Total Citations, h-index, and i10-index
 tbl <- data$cited_by$table
+
 total_cites <- tbl$citations$all[1]
 h_index     <- tbl$h_index$all[2]
 i10_index   <- tbl$i10_index$all[3]
@@ -86,19 +88,43 @@ summary_text <- paste0(
 )
 
 # 5. Generate interactive side-by-side grouped bar chart
-fig <- plot_ly(plot_data, x = ~year) %>%
+# with independently scaled Y-axes
+
+# Calculate horizontal offsets for side-by-side bars
+bar_width <- 0.35
+
+fig <- plot_ly() %>%
+
+  # Citations bar (left Y-axis)
   add_bars(
+    data = plot_data,
+    x = ~I(year - bar_width / 2),
     y = ~citations,
     name = "Citations per Year",
     marker = list(color = '#4285F4'),
-    hovertemplate = "Year: %{x}<br>Citations: %{y}<extra></extra>"
+    width = 0.35,
+    yaxis = "y",
+    hovertemplate = paste0(
+      "Year: %{x:.0f}<br>",
+      "Citations: %{y}<extra></extra>"
+    )
   ) %>%
+
+  # Publications bar (right Y-axis)
   add_bars(
+    data = plot_data,
+    x = ~I(year + bar_width / 2),
     y = ~publications,
     name = "Publications per Year",
     marker = list(color = '#DB4437'),
-    hovertemplate = "Year: %{x}<br>Publications: %{y}<extra></extra>"
+    width = 0.35,
+    yaxis = "y2",
+    hovertemplate = paste0(
+      "Year: %{x:.0f}<br>",
+      "Publications: %{y}<extra></extra>"
+    )
   ) %>%
+
   layout(
     title = list(
       text = paste0(
@@ -109,18 +135,43 @@ fig <- plot_ly(plot_data, x = ~year) %>%
       ),
       y = 0.95
     ),
+
     margin = list(t = 85),
+
     xaxis = list(
       title = "Year",
-      dtick = 1
+      tickmode = "array",
+      tickvals = plot_data$year,
+      ticktext = as.character(plot_data$year),
+      range = c(
+        min(plot_data$year) - 0.6,
+        max(plot_data$year) + 0.6
+      )
     ),
+
+    # Left Y-axis: Citations
     yaxis = list(
-      title = "Number of Citations / Publications",
-      rangemode = "tozero"
+      title = "Citations",
+      side = "left",
+      rangemode = "tozero",
+      showgrid = TRUE,
+      titlefont = list(color = '#4285F4'),
+      tickfont = list(color = '#4285F4')
     ),
-    barmode = "group",
+
+    # Right Y-axis: Publications
+    yaxis2 = list(
+      title = "Publications",
+      overlaying = "y",
+      side = "right",
+      rangemode = "tozero",
+      showgrid = FALSE,
+      titlefont = list(color = '#DB4437'),
+      tickfont = list(color = '#DB4437')
+    ),
+
     bargap = 0.25,
-    bargroupgap = 0.1,
+
     legend = list(
       orientation = "h",
       x = 0.25,
@@ -130,4 +181,5 @@ fig <- plot_ly(plot_data, x = ~year) %>%
 
 # 6. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE)
+
 message("Successfully generated index.html with citation and publication metrics!")
