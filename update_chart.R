@@ -3,7 +3,7 @@ library(jsonlite)
 library(plotly)
 library(htmlwidgets)
 
-# 1. Configuration (keep only the 12-character Scholar ID without '&hl=en')
+# 1. Configuration
 scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ&hl=en")
 api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
@@ -13,7 +13,7 @@ if (nchar(api_key) < 30) {
 
 # 2. Fetch Google Scholar Author JSON using a standard curl User-Agent
 response <- GET(
-  url = "https://serpapi.com/search.json",
+  url = "https://serpapi.com",
   query = list(
     engine = "google_scholar_author",
     author_id = scholar_id,
@@ -45,40 +45,47 @@ if (is.null(ct) || nrow(ct) == 0) {
   stop("No citation graph data found. Verify your scholar_id is correct.")
 }
 
-# Extract Total Citations, h-index, and i10-index from data$cited_by$table
+# Extract Total Citations, h-index, and i10-index
 tbl <- data$cited_by$table
-total_cites <- tbl$citations$all[1]
-h_index     <- tbl$h_index$all[2]
-i10_index   <- tbl$i10_index$all[3]
+total_cites <- tbl$citations$all
+h_index     <- tbl$h_index$all
+i10_index   <- tbl$i10_index$all
 
-# Build clean summary header text
 summary_text <- paste0(
   "<b>Total Citations:</b> ", total_cites,
   "   |   <b>h-index:</b> ", h_index,
   "   |   <b>i10-index:</b> ", i10_index
 )
 
-# 4. Generate the interactive bar chart with summary metrics banner
+# 4. Generate a responsive, transparent interactive bar chart
 fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
-               width = 700, height = 430,
                marker = list(color = '#4285F4'),
-               text = ~citations, textposition = 'outside') %>%
+               text = ~citations, textposition = 'outside',
+               cliponaxis = FALSE) %>%
   layout(
+    autosize      = TRUE,
+    paper_bgcolor = 'rgba(0,0,0,0)',
+    plot_bgcolor  = 'rgba(0,0,0,0)',
     title = list(
       text = paste0("Google Scholar Citations per Year<br><span style='font-size:14px; color:#555555;'>", summary_text, "</span>"),
-      y = 0.95
+      y = 0.96
     ),
-    margin = list(t = 85),
+    margin = list(t = 85, b = 45, l = 45, r = 20),
     xaxis = list(title = "Year", dtick = 1),
     yaxis = list(title = "Citations")
-  )
+  ) %>%
+  config(responsive = TRUE, displayModeBar = FALSE)
+
+# Force the widget container to fill 100% of the iframe width and height
+fig$sizingPolicy <- sizingPolicy(
+  defaultWidth = "100%",
+  defaultHeight = "100%",
+  browser.fill = TRUE,
+  padding = 0
+)
 
 # 5. Export as a self-contained HTML file
-saveWidget(fig, "index.html", selfcontained = TRUE)
-message("Successfully generated index.html with summary metrics!")
+saveWidget(fig, "index.html", selfcontained = TRUE, background = "transparent")
+message("Successfully generated responsive transparent index.html!")
 
-
-# 5. Export as a self-contained HTML file
-saveWidget(fig, "index.html", selfcontained = TRUE)
-message("Successfully generated index.html!")
 
