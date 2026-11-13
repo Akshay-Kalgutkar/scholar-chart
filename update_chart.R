@@ -1,3 +1,4 @@
+
 library(httr)
 library(jsonlite)
 library(plotly)
@@ -51,6 +52,32 @@ total_cites <- tbl$citations$all[1]
 h_index     <- tbl$h_index$all[2]
 i10_index   <- tbl$i10_index$all[3]
 
+# 4. Extract year-wise publication counts
+articles <- data$articles
+
+if (is.null(articles) || is.null(articles$year)) {
+  stop("No publication year data found in the SerpApi response.")
+}
+
+publication_years <- as.integer(as.character(articles$year))
+
+pub_counts <- as.data.frame(
+  table(year = publication_years)
+)
+
+pub_counts <- pub_counts[pub_counts$Freq > 0, ]
+names(pub_counts) <- c("year", "publications")
+
+pub_counts$year <- as.integer(as.character(pub_counts$year))
+
+# Combine citation and publication data by year
+plot_data <- merge(ct, pub_counts, by = "year", all = TRUE)
+
+plot_data$citations[is.na(plot_data$citations)] <- 0
+plot_data$publications[is.na(plot_data$publications)] <- 0
+
+plot_data <- plot_data[order(plot_data$year), ]
+
 # Build clean summary header text
 summary_text <- paste0(
   "<b>Total Citations:</b> ", total_cites,
@@ -58,22 +85,66 @@ summary_text <- paste0(
   "   |   <b>i10-index:</b> ", i10_index
 )
 
-# 4. Generate the interactive bar chart with summary metrics banner
-fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
-               width = 700, height = 250,
-               marker = list(color = '#4285F4'),
-               text = ~citations, textposition = 'outside') %>%
+# 5. Generate interactive line graph with summary metrics banner
+fig <- plot_ly(plot_data, x = ~year) %>%
+  add_lines(
+    y = ~citations,
+    name = "Citations per Year",
+    line = list(color = '#4285F4', width = 3),
+    hovertemplate = "Year: %{x}<br>Citations: %{y}<extra></extra>"
+  ) %>%
+  add_markers(
+    y = ~citations,
+    name = "Citations",
+    marker = list(color = '#4285F4', size = 7),
+    showlegend = FALSE
+  ) %>%
+  add_lines(
+    y = ~publications,
+    name = "Publications per Year",
+    yaxis = "y2",
+    line = list(color = '#DB4437', width = 3),
+    hovertemplate = "Year: %{x}<br>Publications: %{y}<extra></extra>"
+  ) %>%
+  add_markers(
+    y = ~publications,
+    name = "Publications",
+    yaxis = "y2",
+    marker = list(color = '#DB4437', size = 7),
+    showlegend = FALSE
+  ) %>%
   layout(
     title = list(
-      text = paste0("Google Scholar Citations per Year<br><span style='font-size:14px; color:#555555;'>", summary_text, "</span>"),
+      text = paste0(
+        "Google Scholar Citations and Publications per Year<br>",
+        "<span style='font-size:14px; color:#555555;'>",
+        summary_text,
+        "</span>"
+      ),
       y = 0.95
     ),
     margin = list(t = 85),
-    xaxis = list(title = "Year", dtick = 1),
-    yaxis = list(title = "Citations")
+    xaxis = list(
+      title = "Year",
+      dtick = 1
+    ),
+    yaxis = list(
+      title = "Citations",
+      side = "left"
+    ),
+    yaxis2 = list(
+      title = "Publications",
+      overlaying = "y",
+      side = "right",
+      rangemode = "tozero"
+    ),
+    legend = list(
+      orientation = "h",
+      x = 0.25,
+      y = -0.2
+    )
   )
 
-# 5. Export as a self-contained HTML file
+# 6. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE)
-message("Successfully generated index.html with summary metrics!")
-
+message("Successfully generated index.html with citation and publication metrics!")
