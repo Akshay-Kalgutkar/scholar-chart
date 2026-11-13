@@ -4,7 +4,7 @@ library(plotly)
 library(htmlwidgets)
 
 # 1. Configuration
-scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
+scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ&hl=en") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
 api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
 if (nchar(api_key) < 30) {
