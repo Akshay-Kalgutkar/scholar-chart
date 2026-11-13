@@ -60,7 +60,7 @@ summary_text <- paste0(
 
 # 4. Generate the interactive bar chart with summary metrics banner
 fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
-               width = 700, height = 275,
+               width = 700, height = 300,
                marker = list(color = '#4285F4'),
                text = ~citations, textposition = 'outside') %>%
   layout(
