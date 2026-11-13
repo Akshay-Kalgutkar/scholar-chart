@@ -11,7 +11,7 @@ if (nchar(api_key) < 30) {
   stop("SERPAPI_KEY is missing or malformed. Check GitHub Repository Secrets.")
 }
 
-# 2. Fetch Google Scholar Author JSON (using /search + output = "json" and retry logic)
+# 2. Fetch Google Scholar Author JSON using /search.json
 max_retries <- 3
 raw_body <- ""
 status <- 0
@@ -23,10 +23,10 @@ for (attempt in 1:max_retries) {
       engine = "google_scholar_author",
       author_id = scholar_id,
       api_key = api_key,
-      num = "100",
-      output = "json"
+      num = "100"
     ),
     user_agent("curl/8.5.0"),
+    add_headers("Accept" = "application/json"),
     timeout(60)
   )
   
