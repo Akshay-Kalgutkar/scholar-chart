@@ -57,35 +57,26 @@ summary_text <- paste0(
   "   |   <b>i10-index:</b> ", i10_index
 )
 
-# 4. Generate a responsive, transparent interactive bar chart
+# 4. Generate the interactive bar chart with a transparent background
 fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
+               width = 700, height = 430,
                marker = list(color = '#4285F4'),
-               text = ~citations, textposition = 'outside',
-               cliponaxis = FALSE) %>%
+               text = ~citations, textposition = 'outside') %>%
   layout(
-    autosize      = TRUE,
     paper_bgcolor = 'rgba(0,0,0,0)',
     plot_bgcolor  = 'rgba(0,0,0,0)',
     title = list(
       text = paste0("Google Scholar Citations per Year<br><span style='font-size:14px; color:#555555;'>", summary_text, "</span>"),
-      y = 0.96
+      y = 0.95
     ),
-    margin = list(t = 85, b = 45, l = 45, r = 20),
+    margin = list(t = 85),
     xaxis = list(title = "Year", dtick = 1),
     yaxis = list(title = "Citations")
-  ) %>%
-  config(responsive = TRUE, displayModeBar = FALSE)
-
-# Force the widget container to fill 100% of the iframe width and height
-fig$sizingPolicy <- sizingPolicy(
-  defaultWidth = "100%",
-  defaultHeight = "100%",
-  browser.fill = TRUE,
-  padding = 0
-)
+  )
 
 # 5. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE, background = "transparent")
-message("Successfully generated responsive transparent index.html!")
+message("Successfully generated transparent index.html!")
+
 
 
