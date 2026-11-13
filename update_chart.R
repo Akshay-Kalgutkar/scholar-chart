@@ -85,7 +85,7 @@ summary_text <- paste0(
   "   |   <b>i10-index:</b> ", i10_index
 )
 
-# 5. Generate interactive grouped bar chart with summary metrics banner
+# 5. Generate interactive side-by-side grouped bar chart
 fig <- plot_ly(plot_data, x = ~year) %>%
   add_bars(
     y = ~citations,
@@ -96,7 +96,6 @@ fig <- plot_ly(plot_data, x = ~year) %>%
   add_bars(
     y = ~publications,
     name = "Publications per Year",
-    yaxis = "y2",
     marker = list(color = '#DB4437'),
     hovertemplate = "Year: %{x}<br>Publications: %{y}<extra></extra>"
   ) %>%
@@ -116,17 +115,12 @@ fig <- plot_ly(plot_data, x = ~year) %>%
       dtick = 1
     ),
     yaxis = list(
-      title = "Citations",
-      side = "left"
-    ),
-    yaxis2 = list(
-      title = "Publications",
-      overlaying = "y",
-      side = "right",
+      title = "Number of Citations / Publications",
       rangemode = "tozero"
     ),
     barmode = "group",
     bargap = 0.25,
+    bargroupgap = 0.1,
     legend = list(
       orientation = "h",
       x = 0.25,
