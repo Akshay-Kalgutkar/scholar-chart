@@ -4,7 +4,7 @@ library(plotly)
 library(htmlwidgets)
 
 # 1. Configuration
-scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ&hl=en")
+scholar_id <- gsub("\\s+", "", "nFbaL2gAAAAJ&hl=en") # <-- REPLACE WITH YOUR OWN GOOGLE SCHOLAR ID
 api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
 
 if (nchar(api_key) < 30) {
@@ -13,7 +13,7 @@ if (nchar(api_key) < 30) {
 
 # 2. Fetch Google Scholar Author JSON using a standard curl User-Agent
 response <- GET(
-  url = "https://serpapi.com",
+  url = "https://serpapi.com/search.json",
   query = list(
     engine = "google_scholar_author",
     author_id = scholar_id,
@@ -26,14 +26,15 @@ response <- GET(
 
 raw_body <- content(response, as = "text", encoding = "UTF-8")
 
+# Verify we received JSON rather than an HTML redirect
 if (status_code(response) != 200 || grepl("^\\s*<", raw_body)) {
   message("Status code: ", status_code(response))
   message("Content-Type: ", headers(response)[["content-type"]])
   message("Response Preview: ", substr(raw_body, 1, 300))
-  stop("SerpApi did not return valid JSON. Check the Content-Type and Preview above.")
+  stop("SerpApi still returned non-JSON output. Check the Content-Type and Preview above.")
 }
 
-# 3. Parse year-wise citations and summary metrics from JSON
+# 3. Parse the year-wise citation graph directly from JSON
 data <- fromJSON(raw_body)
 
 if (!is.null(data$error)) {
@@ -41,42 +42,19 @@ if (!is.null(data$error)) {
 }
 
 ct <- data$cited_by$graph
+
 if (is.null(ct) || nrow(ct) == 0) {
   stop("No citation graph data found. Verify your scholar_id is correct.")
 }
 
-# Extract Total Citations, h-index, and i10-index
-tbl <- data$cited_by$table
-total_cites <- tbl$citations$all
-h_index     <- tbl$h_index$all
-i10_index   <- tbl$i10_index$all
-
-summary_text <- paste0(
-  "<b>Total Citations:</b> ", total_cites,
-  "   |   <b>h-index:</b> ", h_index,
-  "   |   <b>i10-index:</b> ", i10_index
-)
-
-# 4. Generate the interactive bar chart with a transparent background
+# 4. Generate the interactive bar chart
 fig <- plot_ly(ct, x = ~year, y = ~citations, type = 'bar',
-               width = 700, height = 430,
-               marker = list(color = '#4285F4'),
-               text = ~citations, textposition = 'outside') %>%
-  layout(
-    paper_bgcolor = 'rgba(0,0,0,0)',
-    plot_bgcolor  = 'rgba(0,0,0,0)',
-    title = list(
-      text = paste0("Google Scholar Citations per Year<br><span style='font-size:14px; color:#555555;'>", summary_text, "</span>"),
-      y = 0.95
-    ),
-    margin = list(t = 85),
-    xaxis = list(title = "Year", dtick = 1),
-    yaxis = list(title = "Citations")
-  )
+               width = 700, height = 400,
+               marker = list(color = '#4285F4')) %>%
+  layout(title = "Citations per Year",
+         xaxis = list(title = "Year", dtick = 1),
+         yaxis = list(title = "Citations"))
 
 # 5. Export as a self-contained HTML file
-saveWidget(fig, "index.html", selfcontained = TRUE, background = "transparent")
-message("Successfully generated transparent index.html!")
-
-
-
+saveWidget(fig, "index.html", selfcontained = TRUE)
+message("Successfully generated index.html!")
