@@ -138,8 +138,9 @@ fig <- plot_ly() %>%
 
     margin = list(t = 85),
 
+    # X-axis (no title)
     xaxis = list(
-      title = "Year",
+      title = "",
       tickmode = "array",
       tickvals = plot_data$year,
       ticktext = as.character(plot_data$year),
@@ -149,24 +150,22 @@ fig <- plot_ly() %>%
       )
     ),
 
-    # Left Y-axis: Citations
+    # Left Y-axis: Citations (no title)
     yaxis = list(
-      title = "Citations",
+      title = "",
       side = "left",
       rangemode = "tozero",
       showgrid = TRUE,
-      titlefont = list(color = '#4285F4'),
       tickfont = list(color = '#4285F4')
     ),
 
-    # Right Y-axis: Publications
+    # Right Y-axis: Publications (no title)
     yaxis2 = list(
-      title = "Publications",
+      title = "",
       overlaying = "y",
       side = "right",
       rangemode = "tozero",
       showgrid = FALSE,
-      titlefont = list(color = '#DB4437'),
       tickfont = list(color = '#DB4437')
     ),
 
