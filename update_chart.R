@@ -18,7 +18,7 @@ status <- 0
 
 for (attempt in 1:max_retries) {
   response <- GET(
-    url = "https://serpapi.com/search",
+    url = "https://serpapi.com",
     query = list(
       engine = "google_scholar_author",
       author_id = scholar_id,
@@ -62,6 +62,7 @@ ct <- data$cited_by$graph
 if (is.null(ct) || nrow(ct) == 0) {
   stop("No citation graph data found. Verify your scholar_id is correct.")
 }
+ct$year <- as.numeric(ct$year)
 
 # Count publications per year from data$articles
 articles <- data$articles
@@ -70,9 +71,9 @@ if (!is.null(articles) && "year" %in% names(articles)) {
   pub_years <- pub_years[!is.na(pub_years)]
   
   if (length(pub_years) > 0) {
-    pub_df <- as.data.frame(table(year = pub_years), stringsAsFactors = FALSE)
+    pub_df <- as.data.frame(table(pub_years), stringsAsFactors = FALSE)
+    names(pub_df) <- c("year", "publications")
     pub_df$year <- as.numeric(pub_df$year)
-    names(pub_df) <- "publications"
   } else {
     pub_df <- data.frame(year = numeric(0), publications = numeric(0))
   }
