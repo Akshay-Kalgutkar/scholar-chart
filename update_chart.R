@@ -11,27 +11,43 @@ if (nchar(api_key) < 30) {
   stop("SERPAPI_KEY is missing or too short. Check GitHub Repository Secrets.")
 }
 
-# 2. Fetch Google Scholar Author JSON (num = 100 fetches up to 100 articles for accurate pub counts)
-response <- GET(
-  url = "https://serpapi.com",
-  query = list(
-    engine = "google_scholar_author",
-    author_id = scholar_id,
-    api_key = api_key,
-    num = 100
-  ),
-  user_agent("curl/8.5.0"),
-  add_headers("Accept" = "application/json"),
-  timeout(60)
-)
+# 2. Fetch Google Scholar Author JSON with automatic retry
+max_retries <- 3
+raw_body <- ""
+status <- 0
 
-raw_body <- content(response, as = "text", encoding = "UTF-8")
+for (attempt in 1:max_retries) {
+  response <- GET(
+    url = "https://serpapi.com",
+    query = list(
+      engine = "google_scholar_author",
+      author_id = scholar_id,
+      api_key = api_key,
+      num = "100"
+    ),
+    user_agent("Mozilla/5.0 (compatible; R-httr-client/1.0)"),
+    add_headers("Accept" = "application/json"),
+    timeout(60)
+  )
+  
+  status <- status_code(response)
+  raw_body <- content(response, as = "text", encoding = "UTF-8")
+  
+  if (status == 200 && !grepl("^\\s*<", raw_body)) {
+    break
+  }
+  
+  if (attempt < max_retries) {
+    Sys.sleep(5 * attempt)
+  }
+}
 
-if (status_code(response) != 200 || grepl("^\\s*<", raw_body)) {
-  message("Status code: ", status_code(response))
-  message("Content-Type: ", headers(response)[["content-type"]])
-  message("Response Preview: ", substr(raw_body, 1, 300))
-  stop("SerpApi did not return valid JSON. Check the Content-Type and Preview above.")
+if (status != 200 || grepl("^\\s*<", raw_body)) {
+  stop(paste0(
+    "SerpApi failed (HTTP ", status, "). ",
+    "Content-Type: ", headers(response)[["content-type"]], " | ",
+    "Preview: ", gsub("\\s+", " ", substr(raw_body, 1, 250))
+  ))
 }
 
 # 3. Parse year-wise citations, publications, and summary metrics from JSON
@@ -141,4 +157,3 @@ fig <- plot_ly(merged_df, x = ~year, width = 750, height = 450) %>%
 # 5. Export as a self-contained HTML file
 saveWidget(fig, "index.html", selfcontained = TRUE)
 message("Successfully generated index.html with dual line chart!")
-
