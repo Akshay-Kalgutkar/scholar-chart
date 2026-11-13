@@ -85,33 +85,20 @@ summary_text <- paste0(
   "   |   <b>i10-index:</b> ", i10_index
 )
 
-# 5. Generate interactive line graph with summary metrics banner
+# 5. Generate interactive grouped bar chart with summary metrics banner
 fig <- plot_ly(plot_data, x = ~year) %>%
-  add_lines(
+  add_bars(
     y = ~citations,
     name = "Citations per Year",
-    line = list(color = '#4285F4', width = 3),
+    marker = list(color = '#4285F4'),
     hovertemplate = "Year: %{x}<br>Citations: %{y}<extra></extra>"
   ) %>%
-  add_markers(
-    y = ~citations,
-    name = "Citations",
-    marker = list(color = '#4285F4', size = 7),
-    showlegend = FALSE
-  ) %>%
-  add_lines(
+  add_bars(
     y = ~publications,
     name = "Publications per Year",
     yaxis = "y2",
-    line = list(color = '#DB4437', width = 3),
+    marker = list(color = '#DB4437'),
     hovertemplate = "Year: %{x}<br>Publications: %{y}<extra></extra>"
-  ) %>%
-  add_markers(
-    y = ~publications,
-    name = "Publications",
-    yaxis = "y2",
-    marker = list(color = '#DB4437', size = 7),
-    showlegend = FALSE
   ) %>%
   layout(
     title = list(
@@ -138,6 +125,8 @@ fig <- plot_ly(plot_data, x = ~year) %>%
       side = "right",
       rangemode = "tozero"
     ),
+    barmode = "group",
+    bargap = 0.25,
     legend = list(
       orientation = "h",
       x = 0.25,
