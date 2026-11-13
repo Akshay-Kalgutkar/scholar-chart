@@ -3,15 +3,15 @@ library(jsonlite)
 library(plotly)
 library(htmlwidgets)
 
-# 1. Configuration (strip whitespace and '&hl=en' to keep only the 12-character ID)
-scholar_id <- gsub("\\s+|&.*", "", "nFbaL2gAAAAJ")
-api_key <- gsub("\\s+", "", Sys.getenv("SERPAPI_KEY"))
+# 1. Configuration (keep only the 12-character Scholar ID and clean the API key)
+scholar_id <- gsub("\\s+|&.*", "", "nFbaL2gAAAAJ&hl=en")
+api_key <- gsub("[^A-Za-z0-9_-]", "", Sys.getenv("SERPAPI_KEY"))
 
 if (nchar(api_key) < 30) {
-  stop("SERPAPI_KEY is missing or too short. Check GitHub Repository Secrets.")
+  stop("SERPAPI_KEY is missing or malformed. Check GitHub Repository Secrets.")
 }
 
-# 2. Fetch Google Scholar Author JSON with automatic retry
+# 2. Fetch Google Scholar Author JSON (using /search + output = "json")
 max_retries <- 3
 raw_body <- ""
 status <- 0
@@ -23,10 +23,10 @@ for (attempt in 1:max_retries) {
       engine = "google_scholar_author",
       author_id = scholar_id,
       api_key = api_key,
-      num = "100"
+      num = "100",
+      output = "json"
     ),
-    user_agent("Mozilla/5.0 (compatible; R-httr-client/1.0)"),
-    add_headers("Accept" = "application/json"),
+    user_agent("curl/8.5.0"),
     timeout(60)
   )
   
@@ -44,9 +44,10 @@ for (attempt in 1:max_retries) {
 
 if (status != 200 || grepl("^\\s*<", raw_body)) {
   stop(paste0(
-    "SerpApi failed (HTTP ", status, "). ",
+    "SerpApi failed (HTTP ", status, ") at URL: ",
+    sub("api_key=[^&]+", "api_key=***", response$url), " | ",
     "Content-Type: ", headers(response)[["content-type"]], " | ",
-    "Preview: ", gsub("\\s+", " ", substr(raw_body, 1, 250))
+    "Preview: ", gsub("\\s+", " ", substr(raw_body, 1, 200))
   ))
 }
 
@@ -87,9 +88,9 @@ merged_df <- merged_df[order(merged_df$year), ]
 
 # Extract Total Citations, h-index, and i10-index from data$cited_by$table
 tbl <- data$cited_by$table
-total_cites <- tbl$citations$all[1]
-h_index     <- tbl$h_index$all[2]
-i10_index   <- tbl$i10_index$all[3]
+total_cites <- tbl$citations$all
+h_index     <- tbl$h_index$all
+i10_index   <- tbl$i10_index$all
 
 # Build clean summary header text
 summary_text <- paste0(
@@ -100,7 +101,6 @@ summary_text <- paste0(
 
 # 4. Generate dual-axis line chart: Citations (Line 1) + Publications (Line 2)
 fig <- plot_ly(merged_df, x = ~year, width = 750, height = 450) %>%
-  # Citations per year as a solid blue line (Left Y-axis)
   add_trace(
     y = ~citations,
     name = "Citations",
@@ -113,7 +113,6 @@ fig <- plot_ly(merged_df, x = ~year, width = 750, height = 450) %>%
     textfont = list(color = "#1a73e8", size = 11),
     hovertemplate = "Citations: %{y}<extra></extra>"
   ) %>%
-  # Publications per year as a dashed green line (Right Y-axis)
   add_trace(
     y = ~publications,
     name = "Publications",
